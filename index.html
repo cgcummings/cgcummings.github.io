@@ -8,16 +8,151 @@
 <body>
     <h3>Return Data for any established class Using generics </h3>
     <p>First Create a class for <b>all</b> the data items in your table</p>
-    <code>
+    <pre><code>
 
         Public Class DataTableElements
-        
+
         Property ID As Integer
-        Property Name As String
+        Property FieldOne As String
 
         Public Sub New()
         End Sub
+
         End Class
-    </code>
+    </code></pre>
+
+
+    <p>Next lets make a all encompasing Database class that querys the DB and returns the cmd object</p>
+
+    <pre><code>
+    Imports System.Configuration
+    Imports System.Data.SqlClient
+    Imports System.Reflection
+
+    Public Class DataBaseConnection
+ 
+    Property DBConnString As String = ""
+    
+
+ 
+    Public Sub New()
+    Dim app As New AppSettingsReader()
+    DBConnString = ConfigurationManager.ConnectionStrings("ConStringName").ConnectionString
+    End Sub
+
+
+
+    Function GetCom(sql) As SqlCommand
+
+    Dim con As SqlConnection = New SqlConnection(DBConnString)
+    con.Open()
+
+
+    Dim sqlString As String = sql
+    Dim com As SqlCommand = con.CreateCommand()
+    com.CommandText = sqlString
+
+    Return com
+    End Function
+    End Class
+
+</code></pre>
+
+    <p>Next the bread and butter creating a list of any type. Add this Function to your database class</p>
+    <pre><code>
+
+    Function ReaderToList(Of T)(ByVal dr As IDataReader) As List(Of T)
+    Try
+    Dim list As New List(Of T)
+    Dim obj As T
+
+    While dr.Read()
+    obj = Activator.CreateInstance(Of T)()
+
+    For Each prop As PropertyInfo In obj.GetType().GetProperties()
+    Try
+    If Not Object.Equals(dr(prop.Name), DBNull.Value) Then
+    prop.SetValue(obj, dr(prop.Name), Nothing)
+    End If
+    Catch ex As Exception
+
+    End Try
+    Next
+
+    list.Add(obj)
+    End While
+
+    Return list
+    Catch ex As Exception
+    Return Nothing
+    End Try
+    End Function
+</code></pre>
+    <p>^ very cool </p>
+
+    <p>Next Make your lookup </p>
+
+    <pre><code>
+
+    Imports System.Data.SqlClient
+    Imports Microsoft.ApplicationBlocks.Data
+    Public Class MyListClass
+
+    Public Function GetList() As List(Of DataTableElements)
+    Try
+    Dim db As New DB_Support
+    Dim reader As IDataReader
+    Dim oMyList As New List(Of DataTableElements)
+
+    reader = CType(SqlHelper.ExecuteReader(db.DBConnString, CommandType.Text, "Select * from [SomeTable]"), IDataReader)
+
+    oMyList = db.ReaderToList(Of DataTableElements)(reader)
+
+    Return oMyList
+    Catch ex As Exception
+    Return Nothing
+    End Try
+    End Function
+    End Class
+</code></pre>
+
+    <p>important note on this line</p>
+    <pre><code>reader = CType(SqlHelper.ExecuteReader(db.DBConnString, CommandType.Text, "Select * from [SomeTable]"), IDataReader)</code></pre>
+    <p>the command type can be a stored procedure- just change the string to the SP name </p>
+
+    <p>Lastyall you need to do now to get the list in your controller is</p>
+
+    <pre><code>
+    Dim DataTableDataList As List(Of DataTableElements) = MyListClass.GetList()
+</code></pre>
+
+    <p>Some notes: The Same Database class can be used for any update SPs as well. instead of returning a list return a boolea. That boolean can then pe returned to the page as json for any error handling </p>
+    <pre><code>
+    'Example
+
+    Imports System.Data.SqlClient
+    Imports Microsoft.ApplicationBlocks.Data
+    Public Class DELCommand
+
+    Public Shared Function DelFromTable() As Boolean
+    Try
+    Dim db As New DB_Support
+    Dim reader As IDataReader
+
+
+    reader = CType(SqlHelper.ExecuteReader(db.DBConnString, CommandType.Text, "delete  from [SomeTable] where [ID] = 1"), IDataReader)
+
+
+
+    Return True
+
+    Catch ex As Exception
+    Return False
+    End Try
+    End Function
+    End Class
+</code></pre>
+
 </body>
+
 </html>
