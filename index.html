@@ -99,7 +99,7 @@
 
     Public Function GetList() As List(Of DataTableElements)
     Try
-    Dim db As New DB_Support
+    Dim db As New DataBaseConnection
     Dim reader As IDataReader
     Dim oMyList As New List(Of DataTableElements)
 
@@ -135,7 +135,7 @@
 
     Public Shared Function DelFromTable() As Boolean
     Try
-    Dim db As New DB_Support
+    Dim db As New DataBaseConnection
     Dim reader As IDataReader
 
 
